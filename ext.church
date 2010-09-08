@@ -1,0 +1,135 @@
+% Extensions of System Fomega through impredicative encodings
+% Author: Andreas Abel
+% Modified: Jan Peter Gutzmann
+
+% Polymorphic identity
+
+term id           : forall A:*. A -> A
+                  = \\A:* \x:A. x;
+
+% Cartesian products
+
+type prod         : * -> * -> *
+                  = \A:* \B:* forall X:*. (A -> B -> X) -> X;
+
+term pair         : forall A:* forall B:*. A -> B -> prod A B
+                  = \\A:* \\B:* \a:A \b:B \\X:* \f:(A -> B -> X). f a b;
+
+term fst          : forall A:* forall B:*. prod A B -> A
+                  = \\A:* \\B:* \p:(prod A B). p[A] \a:A \b:B. a;
+
+term snd          : forall A:* forall B:*. prod A B -> B
+                  = \\A:* \\B:* \p:(prod A B). p[B] \a:A \b:B. b;
+
+% Unit type
+
+type unit         : *
+                  = forall X:*. X -> X;
+
+term star         : unit
+                  = id;
+
+% Disjoint sums
+
+type sum          : * -> * -> *
+                  = \A:* \B:* forall X:*. (A -> X) -> (B -> X) -> X;
+
+term inl          : forall A:* forall B:*. A -> sum A B
+                  = \\A:* \\B:* \a:A \\X:* \f:(A -> X) \g:(B -> X). f a;
+
+term inr          : forall A:* forall B:*. B -> sum A B
+                  = \\A:* \\B:* \b:B \\X:* \f:(A -> X) \g:(B -> X). g b;
+
+term case         : forall A:* forall B:* forall C:*. sum A B -> (A -> C) -> (B -> C) -> C
+                  = \\A:* \\B:* \\C:* \x:(sum A B). x[C];
+
+% Empty type
+
+type empty        : *
+                  = forall X:*. X;
+
+term abort        : forall C:*. empty -> C
+                  = \\C:* \x:empty. x[C];
+
+% Existential type of for kind *
+
+type ex0          : (* -> *) -> *
+                  = \F:(* -> *) forall X:*. (forall Y:*. F Y -> X) -> X;
+
+term pack0        : forall F:(* -> *) forall A:*. F A -> ex0 F
+                  = \\F:(* -> *) \\A:* \t:(F A) \\X:* \f:(forall Y:*. F Y -> X). f[A] t;
+
+term open0        : forall F:(* -> *). ex0 F -> forall C:*. (forall X:*. F X -> C) -> C
+                  = \\F:(* -> *). id[ex0 F];
+
+% Existential type for kind * -> *
+
+type ex1          : ((* -> *) -> *) -> *
+                  = \F:((* -> *) -> *) forall X:*. (forall G:(* -> *). F G -> X) -> X;
+
+term pack1        : forall F:((* -> *) -> *) forall G:(* -> *). F G -> ex1 F
+                  = \\F:((* -> *) -> *) \\G:(* -> *) \t:(F G) \\X:* \f:(forall G':(* -> *). F G' -> X). f[G] t; 
+
+term open1        : forall F:((* -> *) -> *). ex1 F -> forall C:*. (forall G:(* -> *). F G -> C) -> C
+                  = \\F:((* -> *) -> *). id[ex1 F];
+
+% Identity constructors for some kinds
+
+type Id0          : * -> *
+                  = \A:*. A;
+
+type Id1          : (* -> *) -> * -> *
+                  = \A:(* -> *). A;
+
+type Id2          : ((* -> *) -> * -> *) -> (* -> *) -> * -> *
+                  = \A:((* -> *) -> * -> *). A;
+
+% Pointwise sums and products for kind * -> *
+
+type sum1         : (* -> *) -> (* -> *) -> * -> *
+                  = \F:(* -> *) \G:(* -> *) \A:* . sum (F A) (G A);
+
+type prod1        : (* -> *) -> (* -> *) -> * -> *
+                  = \F:(* -> *) \G:(* -> *) \A:* . prod (F A) (G A);
+
+% Logical equivalence
+
+type iff          : * -> * -> *
+                  = \A:* \B:* . prod (A -> B) (B -> A);
+
+% Datatype of booleans
+
+type Bool         : *
+                  = sum unit unit;
+
+term true         : Bool
+                  = inl[unit][unit] star ; 
+
+term false        : Bool
+                  = inr[unit][unit] star; 
+
+term if           : Bool -> forall A:*. A -> A -> A
+                  = \b:Bool \\A:* \t:A \e:A. case[unit][unit][A] b (\u:unit. t) \u:unit. e; 
+
+% Datatype of Church natural numbers
+
+type Nat          : *
+                  = forall X:*. (X -> X) -> X -> X;
+
+term null         : Nat
+                  = \\X:* \f:(X -> X) \x:X. x; 
+
+term inc          : Nat -> Nat
+                  = \n:Nat \\X:* \f:(X -> X) \x:X. f (n[X] f x); 
+
+term add          : Nat -> Nat -> Nat
+                  = \n:Nat \m:Nat \\X:* \f:(X -> X) \x:X. n[X] f (m[X] f x); 
+
+term mult         : Nat -> Nat -> Nat
+                  = \n:Nat \m:Nat \\X:* \f:(X -> X). n[X] (m[X] f); 
+
+term exp          : Nat -> Nat -> Nat
+                  = \n:Nat \m:Nat \\X:*. n[X -> X] m[X]; 
+
+term one          : Nat
+                  = \\X:* \f:(X -> X). f; 
